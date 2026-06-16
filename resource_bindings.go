@@ -11,6 +11,7 @@ import (
 	"ysm-model-manager/go/dedup"
 	"ysm-model-manager/go/importer"
 	"ysm-model-manager/go/installer"
+	"ysm-model-manager/go/litematic"
 	"ysm-model-manager/go/packs"
 	"ysm-model-manager/go/types"
 
@@ -54,6 +55,29 @@ func (a *App) ReadPackMeta(path string) string {
 // ReadShaderpackLang 读取光影包 lang/en_US.lang 提取显示名
 func (a *App) ReadShaderpackLang(path string) string {
 	return packs.ReadShaderpackLang(path)
+}
+
+// ReadLitematicMeta 读取投影文件元数据（作者/时间/版本/方块统计/预览图）
+func (a *App) ReadLitematicMeta(path string) string {
+	meta, err := litematic.ParseMeta(path)
+	if err != nil {
+		log.Printf("[litematic] ParseMeta 失败 %s: %v", path, err)
+		return "{}"
+	}
+	data, _ := json.Marshal(meta)
+	return string(data)
+}
+
+// GetLitematicVoxelData 读取投影文件体素数据（按颜色分组的方块位置）
+func (a *App) GetLitematicVoxelData(path string) string {
+	const maxBlocks = 200000
+	data, err := litematic.BuildVoxelData(path, maxBlocks)
+	if err != nil {
+		log.Printf("[litematic] BuildVoxelData 失败 %s: %v", path, err)
+		return "{}"
+	}
+	result, _ := json.Marshal(data)
+	return string(result)
 }
 
 // DetectResourceType 检测指定文件的资源类型

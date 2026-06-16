@@ -105,6 +105,8 @@ export function GetInstanceSyncStatus(arg1:string):Promise<string>;
 
 export function GetLinkMode():Promise<string>;
 
+export function GetLitematicVoxelData(arg1:string):Promise<string>;
+
 export function GetMinecraftPaths():Promise<Array<string>>;
 
 export function GetModel3DSpec(arg1:string):Promise<string>;
@@ -208,6 +210,8 @@ export function PushSingleResourceToInstance(arg1:string,arg2:string,arg3:string
 export function QueueStatus():Promise<main.QueueStatusInfo>;
 
 export function ReadFileBytes(arg1:string):Promise<Array<number>>;
+
+export function ReadLitematicMeta(arg1:string):Promise<string>;
 
 export function ReadPackMeta(arg1:string):Promise<string>;
 

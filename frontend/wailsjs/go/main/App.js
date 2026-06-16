@@ -202,6 +202,10 @@ export function GetLinkMode() {
   return window['go']['main']['App']['GetLinkMode']();
 }
 
+export function GetLitematicVoxelData(arg1) {
+  return window['go']['main']['App']['GetLitematicVoxelData'](arg1);
+}
+
 export function GetMinecraftPaths() {
   return window['go']['main']['App']['GetMinecraftPaths']();
 }
@@ -408,6 +412,10 @@ export function QueueStatus() {
 
 export function ReadFileBytes(arg1) {
   return window['go']['main']['App']['ReadFileBytes'](arg1);
+}
+
+export function ReadLitematicMeta(arg1) {
+  return window['go']['main']['App']['ReadLitematicMeta'](arg1);
 }
 
 export function ReadPackMeta(arg1) {

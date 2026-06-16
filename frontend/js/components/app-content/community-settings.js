@@ -111,7 +111,7 @@ export async function initSettings(root) {
     {
       rtype: "create-blueprint",
       icon: "⚙️",
-      name: "蓝图",
+      name: "蓝图 / 投影",
       cfgKey: "schematicRoot",
     },
     { rtype: "mmd-skin", icon: "🎭", name: "MMD 模型", cfgKey: "mmdRoot" },

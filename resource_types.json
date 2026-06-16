@@ -35,7 +35,7 @@
     },
     {
       "id": "create-blueprint",
-      "name": "蓝图",
+      "name": "蓝图 / 投影",
       "icon": "⚙️",
       "extensions": [".nbt", ".schematic", ".litematic"],
       "installDir": "schematics/",
