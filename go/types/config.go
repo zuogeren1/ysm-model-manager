@@ -8,6 +8,7 @@ type AppConfig struct {
 	ResourcepackRoot string `json:"resourcepackRoot"`
 	ShaderpackRoot   string `json:"shaderpackRoot"`
 	SchematicRoot    string `json:"schematicRoot"`
+	LitematicRoot    string `json:"litematicRoot"`
 	MmdRoot          string `json:"mmdRoot"`
 	VrcRoot          string `json:"vrcRoot"`
 	McRoot           string `json:"mcRoot"`

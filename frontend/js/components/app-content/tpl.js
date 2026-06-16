@@ -20,6 +20,7 @@ export function repositoryHTML() {
     '<button class="repo-subtab" data-rtab="resourcepack">🎨 资源包</button>' +
     '<button class="repo-subtab" data-rtab="shaderpack">☀️ 光影包</button>' +
     '<button class="repo-subtab" data-rtab="create-blueprint">⚙️ 蓝图</button>' +
+    '<button class="repo-subtab" data-rtab="litematic">📐 投影</button>' +
     "</div>" +
     '<div class="repo-layout" style="flex:1;display:flex;overflow:hidden">' +
     '<div class="repo-left" style="flex:1;display:flex;flex-direction:column;min-width:0">' +
@@ -70,6 +71,7 @@ export function resourceLibraryHTML() {
     '<button class="repo-tab" data-rtab="resourcepack">🎨 资源包</button>' +
     '<button class="repo-tab" data-rtab="shaderpack">☀️ 光影包</button>' +
     '<button class="repo-tab" data-rtab="create-blueprint">⚙️ 蓝图</button>' +
+    '<button class="repo-tab" data-rtab="litematic">📐 投影</button>' +
     "</div>" +
     '<div id="res-panel" style="flex:1;display:flex;overflow:hidden"></div>' +
     "</div>"

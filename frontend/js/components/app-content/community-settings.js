@@ -25,6 +25,7 @@ export async function initSettings(root) {
     resourcepack: "resourcepacks",
     shaderpack: "shaderpacks",
     "create-blueprint": "schematics",
+    litematic: "litematics",
     "mmd-skin": "mmd",
     "vrchat-avatar": "vrchat",
   };
@@ -111,8 +112,14 @@ export async function initSettings(root) {
     {
       rtype: "create-blueprint",
       icon: "⚙️",
-      name: "蓝图 / 投影",
+      name: "蓝图 / 结构",
       cfgKey: "schematicRoot",
+    },
+    {
+      rtype: "litematic",
+      icon: "📐",
+      name: "投影文件",
+      cfgKey: "litematicRoot",
     },
     { rtype: "mmd-skin", icon: "🎭", name: "MMD 模型", cfgKey: "mmdRoot" },
     {
