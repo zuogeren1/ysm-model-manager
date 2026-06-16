@@ -231,7 +231,6 @@ func ParseSchematic(path string) map[string]interface{} {
 		result["paletteSize"] = len(paletteCompound)
 	}
 
-	// 没有 Palette 但有 Blocks 时，从原始字节数组统计方块 ID(+Data) 频率
 	if paletteCompound == nil && blocksBA != nil {
 		dataBA, _ := GetByteArray(root, "Data")
 		idCounts := map[string]int{}
@@ -239,15 +238,23 @@ func ParseSchematic(path string) map[string]interface{} {
 			if id == 0 {
 				continue
 			}
-			key := fmt.Sprintf("ID:%d", id)
-			if dataBA != nil && i < len(dataBA) && dataBA[i] != 0 {
-				key = fmt.Sprintf("ID:%d:%d", id, dataBA[i])
+			var d byte
+			if dataBA != nil && i < len(dataBA) {
+				d = dataBA[i]
 			}
-			idCounts[key]++
+			name := ResolveBlockName(int(id), d)
+			if name == "" {
+				if d != 0 {
+					name = fmt.Sprintf("ID:%d:%d", id, d)
+				} else {
+					name = fmt.Sprintf("ID:%d", id)
+				}
+			}
+			idCounts[name]++
 		}
 		stats := make([]types.LitematicBlockStat, 0, len(idCounts))
-		for key, count := range idCounts {
-			stats = append(stats, types.LitematicBlockStat{Name: key, Count: count})
+		for name, count := range idCounts {
+			stats = append(stats, types.LitematicBlockStat{Name: name, Count: count})
 		}
 		sort.Slice(stats, func(i, j int) bool { return stats[i].Count > stats[j].Count })
 		result["paletteStats"] = stats

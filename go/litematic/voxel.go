@@ -331,8 +331,12 @@ func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelD
 			color := "#7F7F7F"
 			if paletteMap != nil {
 				if c, ok := paletteMap[blockID]; ok { color = c }
-			} else if dataBA != nil && i < len(dataBA) && dataBA[i] != 0 {
-				color = MapColor(fmt.Sprintf("legacy:%d:%d", blockID, dataBA[i]))
+			} else {
+				var d byte
+				if dataBA != nil && i < len(dataBA) { d = dataBA[i] }
+				if name := ResolveBlockName(blockID, d); name != "" {
+					color = MapColor(name)
+				}
 			}
 			x := int16(i % w)
 			z := int16((i / w) % l)
