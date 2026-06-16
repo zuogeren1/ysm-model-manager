@@ -1,6 +1,6 @@
 let _voxel3d = null;
 
-export async function createLitematic3D(path) {
+export async function createLitematic3D(path, voxelFn) {
   if (_voxel3d) { _voxel3d.cleanup(); _voxel3d = null; }
 
   const overlay = document.createElement("div");
@@ -102,11 +102,21 @@ export async function createLitematic3D(path) {
     "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.6);font-size:14px;gap:12px;z-index:10;background:rgba(26,27,46,0.9)";
   loadingEl.innerHTML =
     '<div style="font-size:32px">🧊</div><div>加载体素数据...</div><div style="width:200px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden"><div style="height:100%;width:30%;background:var(--accent,#7c83ff);border-radius:2px;animation:ysm-prog 1.5s ease-in-out infinite"></div></div>';
-  overlay.appendChild(loadingEl);
+  viewContainer.appendChild(loadingEl);
+
+  function closeOverlay() {
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    _voxel3d = null;
+  }
+  closeBtn.onclick = closeOverlay;
+  document.addEventListener("keydown", function escH(e) {
+    if (e.key === "Escape") { document.removeEventListener("keydown", escH); closeOverlay(); }
+  });
 
   try {
-    const { GetLitematicVoxelData } = await import("../../../wailsjs/go/main/App.js");
-    const jsonStr = await GetLitematicVoxelData(path);
+    const App = await import("../../../wailsjs/go/main/App.js");
+    const fn = App[voxelFn || "GetLitematicVoxelData"];
+    const jsonStr = await fn(path);
     const data = JSON.parse(jsonStr);
 
     if (!data || !data.groups || !data.groups.length) {

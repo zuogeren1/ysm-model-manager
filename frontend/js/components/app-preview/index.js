@@ -523,18 +523,15 @@ class AppPreview extends HTMLElement {
       showResourcePack(this, path);
       return;
     }
-    // .litematic 文件走专用预览（即使 rtype 是 create-blueprint）
-    if (/\.litematic$/i.test(path)) {
+    if (/\.(litematic|nbt|schematic)$/i.test(path)) {
       const { showLitematic } = await import("./preview-litematic-meta.js");
       showLitematic(this, path);
       return;
     }
-    // ysm 或无检测结果 → YSM 模型解析
     if (!rtype || rtype === "ysm") {
       showModelDetail(this, path);
       return;
     }
-    // 其他已知类型（shaderpack / create-blueprint / mmd-skin / vrchat-avatar）
     showShaderPack(this, path, this._typeMeta(rtype));
   }
 

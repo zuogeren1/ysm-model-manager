@@ -94,64 +94,75 @@ export async function showLitematic(ctx, path) {
 
   // 3D tab 按钮
   const btn3dTab = ctx._root.getElementById("btn-lt-3d-tab");
+  const isNbt = /\.nbt$/i.test(path);
+  const isSch = /\.schematic$/i.test(path);
+  const label = isSch ? "schematic" : isNbt ? "nbt" : "litematic";
 
   try {
-    const { ReadLitematicMeta } = await import("../../../wailsjs/go/main/App.js");
-    const jsonStr = await ReadLitematicMeta(path);
-    const meta = JSON.parse(jsonStr);
-
-    if (!meta || (!meta.name && !meta.author && meta.totalBlocks === undefined)) {
-      const detailDiv = ctx._root.getElementById("preview-detail");
-      if (detailDiv) detailDiv.innerHTML = `<div class="dp-placeholder"><div class="big-icon">⚠️</div><div class="dp-hint">无法解析此投影文件</div></div>`;
-      return;
+    const { ReadLitematicMeta, ReadNbtStructure, ReadSchematic } = await import("../../../wailsjs/go/main/App.js");
+    let meta;
+    if (isNbt) {
+      meta = JSON.parse(await ReadNbtStructure(path) || "{}");
+      if (!meta || (!meta.size && !meta.blockCount)) throw new Error("无法解析");
+    } else if (isSch) {
+      meta = JSON.parse(await ReadSchematic(path) || "{}");
+      if (!meta || (!meta.size && !meta.blockCount)) throw new Error("无法解析");
+    } else {
+      meta = JSON.parse(await ReadLitematicMeta(path) || "{}");
+      if (!meta || (!meta.name && !meta.author && meta.totalBlocks === undefined)) throw new Error("无法解析");
     }
+
+    const sizeArr = meta.enclosingSize || meta.size;
+    const sizeStr = sizeArr ? `${sizeArr[0] || 0} × ${sizeArr[1] || 0} × ${sizeArr[2] || 0}` : "未知";
+    const blockStats = meta.blockStats || meta.paletteStats;
 
     const previewImgHTML = meta.previewImage
       ? `<img src="${meta.previewImage}" alt="preview" style="width:140px;height:140px;object-fit:contain;border-radius:6px;border:1px solid var(--bd);align-self:center;image-rendering:pixelated">`
       : "";
 
-    const sizeStr = meta.enclosingSize
-      ? `${meta.enclosingSize[0] || 0} × ${meta.enclosingSize[1] || 0} × ${meta.enclosingSize[2] || 0}`
-      : "未知";
+    function field(label, value) {
+      return value ? `<div class="lt-meta-row"><span class="lt-meta-label">${label}</span><span>${esc(String(value))}</span></div>` : "";
+    }
 
-    // === 详情 tab ===
     const detailDiv = ctx._root.getElementById("preview-detail");
     if (detailDiv) {
+      let extra = "";
+      if (isNbt || isSch) {
+        extra = `${field("数据版本", meta.dataVersion)}${field("格式版本", meta.version)}${field("名称", meta.name)}${field("作者", meta.author)}`;
+      } else {
+        extra = `${field("名称", meta.name)}${field("作者", meta.author)}${field("创建时间", meta.timeCreated ? fmtTime(meta.timeCreated) : "")}${field("修改时间", meta.timeModified ? fmtTime(meta.timeModified) : "")}<div class="lt-meta-row"><span class="lt-meta-label">格式版本</span><span>Litematica v${meta.version || "?"} · MC Data v${meta.minecraftDataVersion || "?"}</span></div>${field("描述", meta.description)}`;
+      }
       detailDiv.innerHTML = `<h3>📋 蓝图详情</h3>
     <div style="padding:12px;display:flex;flex-direction:column;gap:6px;font-size:var(--fs-sm)">
       ${previewImgHTML}
       <div><strong>${renderFormattedText(basename)}</strong></div>
-      ${meta.name ? `<div class="lt-meta-row"><span class="lt-meta-label">名称</span><span>${esc(meta.name)}</span></div>` : ""}
-      ${meta.author ? `<div class="lt-meta-row"><span class="lt-meta-label">作者</span><span>${esc(meta.author)}</span></div>` : ""}
-      ${meta.timeCreated ? `<div class="lt-meta-row"><span class="lt-meta-label">创建时间</span><span>${fmtTime(meta.timeCreated)}</span></div>` : ""}
-      ${meta.timeModified ? `<div class="lt-meta-row"><span class="lt-meta-label">修改时间</span><span>${fmtTime(meta.timeModified)}</span></div>` : ""}
-      <div class="lt-meta-row"><span class="lt-meta-label">格式版本</span><span>Litematica v${meta.version || "?"} · MC Data v${meta.minecraftDataVersion || "?"}</span></div>
-      ${meta.description ? `<div class="lt-meta-row"><span class="lt-meta-label">描述</span><span>${esc(meta.description)}</span></div>` : ""}
+      ${extra}
       <div style="margin:4px 0;border-top:1px solid var(--bd)"></div>
-      <div class="lt-meta-row"><span class="lt-meta-label">非空气方块</span><span>${(meta.totalBlocks || 0).toLocaleString()} 个</span></div>
+      <div class="lt-meta-row"><span class="lt-meta-label">非空气方块</span><span>${(meta.totalBlocks || meta.blockCount || 0).toLocaleString()} 个</span></div>
       <div class="lt-meta-row"><span class="lt-meta-label">总体积</span><span>${(meta.totalVolume || 0).toLocaleString()} 方块</span></div>
       <div class="lt-meta-row"><span class="lt-meta-label">包围盒</span><span>${sizeStr}</span></div>
-      <div class="lt-meta-row"><span class="lt-meta-label">区域数</span><span>${meta.regionCount || 0}</span></div>
+      ${!isNbt && !isSch ? `<div class="lt-meta-row"><span class="lt-meta-label">区域数</span><span>${meta.regionCount || 0}</span></div>` : ""}
+      ${meta.entityCount !== undefined ? `<div class="lt-meta-row"><span class="lt-meta-label">实体数量</span><span>${meta.entityCount}</span></div>` : ""}
+      ${meta.tileEntityCount !== undefined ? `<div class="lt-meta-row"><span class="lt-meta-label">方块实体</span><span>${meta.tileEntityCount}</span></div>` : ""}
     </div>`;
     }
 
-    // === 材料列表 tab ===
     const materialDiv = ctx._root.getElementById("preview-material");
     if (materialDiv) {
       materialDiv.innerHTML = `<h3>🧱 材料列表</h3>
     <div style="padding:12px;font-size:var(--fs-sm)">
-      ${renderBlockList(meta.blockStats)}
+      ${renderBlockList(blockStats)}
     </div>`;
     }
 
-    // 3D tab 按钮（全屏打开，与 YSM 的 3D 预览行为一致）
     if (btn3dTab) {
+      const voxelFn = isNbt ? "GetNbtVoxelData" : isSch ? "GetSchematicVoxelData" : "GetLitematicVoxelData";
       btn3dTab.onclick = async () => {
         btn3dTab.textContent = "⏳";
         btn3dTab.disabled = true;
         try {
           const { createLitematic3D } = await import("./preview-litematic-3d.js");
-          await createLitematic3D(path);
+          await createLitematic3D(path, voxelFn);
         } finally {
           btn3dTab.textContent = "🎨 3D";
           btn3dTab.disabled = false;

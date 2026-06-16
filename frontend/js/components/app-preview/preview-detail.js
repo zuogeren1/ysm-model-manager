@@ -113,7 +113,7 @@ export async function showResourcePack(ctx, path) {
 
 export { showLitematic } from "./preview-litematic-meta.js";
 
-/** 显示简单类型预览（仅图标 + 名称），用于光影包/蓝图/MMD/VRChat 等 */
+/** 显示简单类型预览（仅图标 + 名称），用于光影包/MMD/VRChat 等 */
 export async function showShaderPack(ctx, path, opts) {
   const icon = (opts && opts.icon) || "☀️";
   const label = (opts && opts.label) || "光影包";

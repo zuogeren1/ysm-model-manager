@@ -52,6 +52,50 @@ func (a *App) ReadPackMeta(path string) string {
 	return string(data)
 }
 
+// GetNbtVoxelData 读取 .nbt 结构文件体素数据
+func (a *App) GetNbtVoxelData(path string) string {
+	const maxBlocks = 200000
+	data, err := litematic.BuildNbtVoxelData(path, maxBlocks)
+	if err != nil {
+		log.Printf("[nbt] BuildNbtVoxelData 失败 %s: %v", path, err)
+		return "{}"
+	}
+	result, _ := json.Marshal(data)
+	return string(result)
+}
+
+// GetSchematicVoxelData 读取 .schematic 文件体素数据
+func (a *App) GetSchematicVoxelData(path string) string {
+	const maxBlocks = 200000
+	data, err := litematic.BuildSchematicVoxelData(path, maxBlocks)
+	if err != nil {
+		log.Printf("[schematic] BuildSchematicVoxelData 失败 %s: %v", path, err)
+		return "{}"
+	}
+	result, _ := json.Marshal(data)
+	return string(result)
+}
+
+// ReadSchematic 读取 .schematic 文件基本信息
+func (a *App) ReadSchematic(path string) string {
+	result := litematic.ParseSchematic(path)
+	if result == nil {
+		return "{}"
+	}
+	data, _ := json.Marshal(result)
+	return string(data)
+}
+
+// ReadNbtStructure 读取 .nbt 结构文件基本信息
+func (a *App) ReadNbtStructure(path string) string {
+	result := litematic.ParseNbtStructure(path)
+	if result == nil {
+		return "{}"
+	}
+	data, _ := json.Marshal(result)
+	return string(data)
+}
+
 // ReadShaderpackLang 读取光影包 lang/en_US.lang 提取显示名
 func (a *App) ReadShaderpackLang(path string) string {
 	return packs.ReadShaderpackLang(path)

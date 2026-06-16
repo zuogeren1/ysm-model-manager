@@ -180,3 +180,192 @@ func buildRegionInfo(region TagCompound) *regionInfo {
 		bpe:     bpe,
 	}
 }
+
+func BuildNbtVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+	root, err := ReadRootCompound(gz)
+	if err != nil {
+		return nil, err
+	}
+
+	sizeList := GetList(root, "size")
+	blocksList := GetList(root, "blocks")
+	paletteList := GetList(root, "palette")
+	if sizeList == nil || blocksList == nil || paletteList == nil {
+		return nil, fmt.Errorf("not a structure NBT file")
+	}
+	if len(sizeList.Elements) != 3 {
+		return nil, fmt.Errorf("invalid size")
+	}
+
+	sx := int(sizeList.Elements[0].(TagInt))
+	sy := int(sizeList.Elements[1].(TagInt))
+	sz := int(sizeList.Elements[2].(TagInt))
+
+	paletteColors := make([]string, len(paletteList.Elements))
+	for i, elem := range paletteList.Elements {
+		nameTag := GetCompoundKey(elem, "Name")
+		if name, ok := nameTag.(TagString); ok {
+			paletteColors[i] = MapColor(string(name))
+		} else {
+			paletteColors[i] = "#7F7F7F"
+		}
+	}
+
+	colorGroups := make(map[string][][3]int16)
+	blockCount := 0
+	truncated := false
+	for _, elem := range blocksList.Elements {
+		if blockCount >= maxBlocks {
+			truncated = true
+			break
+		}
+		block, ok := elem.(TagCompound)
+		if !ok {
+			continue
+		}
+		posList := GetList(block, "pos")
+		stateTag := block["state"]
+		if posList == nil || stateTag == nil || len(posList.Elements) != 3 {
+			continue
+		}
+		state, ok := stateTag.(TagInt)
+		if !ok || int(state) < 0 || int(state) >= len(paletteColors) {
+			continue
+		}
+		bx := int16(posList.Elements[0].(TagInt))
+		by := int16(posList.Elements[1].(TagInt))
+		bz := int16(posList.Elements[2].(TagInt))
+		color := paletteColors[state]
+		colorGroups[color] = append(colorGroups[color], [3]int16{bx, by, bz})
+		blockCount++
+	}
+
+	groups := make([]types.VoxelGroup, 0, len(colorGroups))
+	for color, positions := range colorGroups {
+		groups = append(groups, types.VoxelGroup{Color: color, Positions: positions})
+	}
+	return &types.LitematicVoxelData{
+		Size:      [3]int{sx, sy, sz},
+		Groups:    groups,
+		Truncated: truncated,
+	}, nil
+}
+
+func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+
+	root, err := ReadRootCompound(gz)
+	if err != nil {
+		return nil, err
+	}
+
+	w, wok := GetInt(root, "Width")
+	h, hok := GetInt(root, "Height")
+	l, lok := GetInt(root, "Length")
+	if !wok || !hok || !lok {
+		return nil, fmt.Errorf("not a schematic file")
+	}
+
+	blocksBA, _ := GetByteArray(root, "Blocks")
+	blockDataBA, _ := GetByteArray(root, "BlockData")
+	dataBA, _ := GetByteArray(root, "Data")
+
+	paletteCompound := GetCompound(root, "Palette")
+	var paletteMap map[int]string
+	if paletteCompound != nil {
+		paletteMap = make(map[int]string)
+		for name, tag := range paletteCompound {
+			if id, ok := tag.(TagInt); ok {
+				paletteMap[int(id)] = MapColor(name)
+			}
+		}
+	}
+
+	colorGroups := make(map[string][][3]int16)
+	blockCount := 0
+	truncated := false
+	total := w * h * l
+
+	// v1: raw Blocks byte array; v2+: varint BlockData
+	if blockDataBA != nil && paletteMap != nil {
+		offset := 0
+		for i := 0; i < total; i++ {
+			if blockCount >= maxBlocks { truncated = true; break }
+			if offset >= len(blockDataBA) { break }
+			blockID, newOff := readVarInt(blockDataBA, offset)
+			offset = newOff
+			if blockID == 0 { continue }
+			color := "#7F7F7F"
+			if c, ok := paletteMap[blockID]; ok { color = c }
+			x := int16(i % w)
+			z := int16((i / w) % l)
+			y := int16(i / (w * l))
+			colorGroups[color] = append(colorGroups[color], [3]int16{x, y, z})
+			blockCount++
+		}
+	} else if blocksBA != nil {
+		for i := 0; i < total && i < len(blocksBA); i++ {
+			if blockCount >= maxBlocks { truncated = true; break }
+			blockID := int(blocksBA[i])
+			if blockID == 0 { continue }
+			color := "#7F7F7F"
+			if paletteMap != nil {
+				if c, ok := paletteMap[blockID]; ok { color = c }
+			} else if dataBA != nil && i < len(dataBA) && dataBA[i] != 0 {
+				color = MapColor(fmt.Sprintf("legacy:%d:%d", blockID, dataBA[i]))
+			}
+			x := int16(i % w)
+			z := int16((i / w) % l)
+			y := int16(i / (w * l))
+			colorGroups[color] = append(colorGroups[color], [3]int16{x, y, z})
+			blockCount++
+		}
+	} else {
+		return nil, fmt.Errorf("schematic has no Blocks or BlockData")
+	}
+
+	groups := make([]types.VoxelGroup, 0, len(colorGroups))
+	for color, positions := range colorGroups {
+		groups = append(groups, types.VoxelGroup{Color: color, Positions: positions})
+	}
+	return &types.LitematicVoxelData{
+		Size:      [3]int{w, h, l},
+		Groups:    groups,
+		Truncated: truncated,
+	}, nil
+}
+
+func readVarInt(data []byte, offset int) (int, int) {
+	result := 0
+	shift := 0
+	for offset < len(data) {
+		b := int(data[offset])
+		offset++
+		result |= (b & 0x7F) << shift
+		if (b & 0x80) == 0 {
+			break
+		}
+		shift += 7
+	}
+	return result, offset
+}

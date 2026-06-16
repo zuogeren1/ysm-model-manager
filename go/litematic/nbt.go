@@ -290,7 +290,12 @@ func GetCompound(tag NbtTag, key string) TagCompound {
 
 func GetInt(compound TagCompound, key string) (int, bool) {
 	if child := compound[key]; child != nil {
-		if v, ok := child.(TagInt); ok {
+		switch v := child.(type) {
+		case TagInt:
+			return int(v), true
+		case TagShort:
+			return int(v), true
+		case TagByte:
 			return int(v), true
 		}
 	}

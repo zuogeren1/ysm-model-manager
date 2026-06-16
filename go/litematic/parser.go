@@ -173,3 +173,162 @@ func convertPreviewImage(data []byte) string {
 	}
 	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 }
+
+func ParseSchematic(path string) map[string]interface{} {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil
+	}
+	defer gz.Close()
+
+	root, err := ReadRootCompound(gz)
+	if err != nil {
+		return nil
+	}
+
+	result := map[string]interface{}{}
+
+	if v, ok := GetInt(root, "Version"); ok {
+		result["version"] = v
+	}
+	if v, ok := GetInt(root, "DataVersion"); ok {
+		result["dataVersion"] = v
+	}
+
+	w, wok := GetInt(root, "Width")
+	h, hok := GetInt(root, "Height")
+	l, lok := GetInt(root, "Length")
+	if wok && hok && lok {
+		result["size"] = []int{w, h, l}
+	}
+
+	metaCompound := GetCompound(root, "Metadata")
+	if metaCompound != nil {
+		if author, ok := GetString(metaCompound, "Author"); ok {
+			result["author"] = author
+		}
+		if name, ok := GetString(metaCompound, "Name"); ok {
+			result["name"] = name
+		}
+	}
+
+	blocksBA, _ := GetByteArray(root, "Blocks")
+	if blocksBA != nil {
+		result["blockCount"] = len(blocksBA)
+	}
+
+	paletteCompound := GetCompound(root, "Palette")
+	if paletteMax, ok := GetInt(root, "PaletteMax"); ok {
+		result["paletteMax"] = paletteMax
+	}
+	if paletteCompound != nil {
+		result["paletteSize"] = len(paletteCompound)
+	}
+
+	// 没有 Palette 但有 Blocks 时，从原始字节数组统计方块 ID(+Data) 频率
+	if paletteCompound == nil && blocksBA != nil {
+		dataBA, _ := GetByteArray(root, "Data")
+		idCounts := map[string]int{}
+		for i, id := range blocksBA {
+			if id == 0 {
+				continue
+			}
+			key := fmt.Sprintf("ID:%d", id)
+			if dataBA != nil && i < len(dataBA) && dataBA[i] != 0 {
+				key = fmt.Sprintf("ID:%d:%d", id, dataBA[i])
+			}
+			idCounts[key]++
+		}
+		stats := make([]types.LitematicBlockStat, 0, len(idCounts))
+		for key, count := range idCounts {
+			stats = append(stats, types.LitematicBlockStat{Name: key, Count: count})
+		}
+		sort.Slice(stats, func(i, j int) bool { return stats[i].Count > stats[j].Count })
+		result["paletteStats"] = stats
+		if m, ok := GetString(root, "Materials"); ok {
+			result["materials"] = m
+		}
+	}
+
+	tileEntities := GetList(root, "TileEntities")
+	if tileEntities != nil {
+		result["tileEntityCount"] = len(tileEntities.Elements)
+	}
+	entities := GetList(root, "Entities")
+	if entities != nil {
+		result["entityCount"] = len(entities.Elements)
+	}
+
+	if len(result) <= 1 {
+		return nil
+	}
+	return result
+}
+
+func ParseNbtStructure(path string) map[string]interface{} {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil
+	}
+	defer gz.Close()
+
+	root, err := ReadRootCompound(gz)
+	if err != nil {
+		return nil
+	}
+
+	sizeList := GetList(root, "size")
+	blocksList := GetList(root, "blocks")
+	paletteList := GetList(root, "palette")
+	entitiesList := GetList(root, "entities")
+	if sizeList == nil && blocksList == nil && paletteList == nil {
+		return nil
+	}
+
+	result := map[string]interface{}{}
+	if v, ok := GetInt(root, "DataVersion"); ok {
+		result["dataVersion"] = v
+	}
+	if sizeList != nil && len(sizeList.Elements) == 3 {
+		sx, _ := sizeList.Elements[0].(TagInt)
+		sy, _ := sizeList.Elements[1].(TagInt)
+		sz, _ := sizeList.Elements[2].(TagInt)
+		result["size"] = []int{int(sx), int(sy), int(sz)}
+	}
+	if blocksList != nil {
+		result["blockCount"] = len(blocksList.Elements)
+	}
+	if entitiesList != nil {
+		result["entityCount"] = len(entitiesList.Elements)
+	}
+	if paletteList != nil {
+		counts := map[string]int{}
+		for _, elem := range paletteList.Elements {
+			nameTag := GetCompoundKey(elem, "Name")
+			if name, ok := nameTag.(TagString); ok && string(name) != "" {
+				counts[string(name)]++
+			}
+		}
+		stats := make([]types.LitematicBlockStat, 0, len(counts))
+		for name, count := range counts {
+			stats = append(stats, types.LitematicBlockStat{Name: name, Count: count})
+		}
+		sort.Slice(stats, func(i, j int) bool { return stats[i].Count > stats[j].Count })
+		if len(stats) > 0 {
+			result["paletteStats"] = stats
+		}
+	}
+	return result
+}

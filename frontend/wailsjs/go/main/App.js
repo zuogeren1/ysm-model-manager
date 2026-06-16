@@ -222,6 +222,10 @@ export function GetModelTexSizes(arg1) {
   return window['go']['main']['App']['GetModelTexSizes'](arg1);
 }
 
+export function GetNbtVoxelData(arg1) {
+  return window['go']['main']['App']['GetNbtVoxelData'](arg1);
+}
+
 export function GetPackInfo(arg1) {
   return window['go']['main']['App']['GetPackInfo'](arg1);
 }
@@ -232,6 +236,10 @@ export function GetRepoRoot(arg1) {
 
 export function GetResourceInstanceStatus(arg1, arg2, arg3) {
   return window['go']['main']['App']['GetResourceInstanceStatus'](arg1, arg2, arg3);
+}
+
+export function GetSchematicVoxelData(arg1) {
+  return window['go']['main']['App']['GetSchematicVoxelData'](arg1);
 }
 
 export function GetSubDirMap() {
@@ -418,8 +426,16 @@ export function ReadLitematicMeta(arg1) {
   return window['go']['main']['App']['ReadLitematicMeta'](arg1);
 }
 
+export function ReadNbtStructure(arg1) {
+  return window['go']['main']['App']['ReadNbtStructure'](arg1);
+}
+
 export function ReadPackMeta(arg1) {
   return window['go']['main']['App']['ReadPackMeta'](arg1);
+}
+
+export function ReadSchematic(arg1) {
+  return window['go']['main']['App']['ReadSchematic'](arg1);
 }
 
 export function ReadShaderpackLang(arg1) {
