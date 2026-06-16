@@ -9,11 +9,11 @@ import (
 	"image/png"
 	"os"
 	"sort"
+	"strings"
 
 	"ysm-model-manager/go/types"
 )
 
-// ParseMeta 解析 .litematic 文件的元数据和方块统计
 func ParseMeta(path string) (*types.LitematicMeta, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -72,7 +72,6 @@ func ParseMeta(path string) (*types.LitematicMeta, error) {
 		meta.EnclosingSize = size
 	}
 
-	// PreviewImage: ARGB byte array → RGBA → PNG → base64
 	if previewData, ok := GetByteArray(metadata, "PreviewImage"); ok && len(previewData) > 0 {
 		meta.PreviewImage = convertPreviewImage(previewData)
 	}
@@ -86,8 +85,6 @@ func ParseMeta(path string) (*types.LitematicMeta, error) {
 	return meta, nil
 }
 
-// aggregateBlockStatsFromPalette 从所有 region 的 palette 中按名称聚合，精确计数
-// 复用 buildRegionInfo 的标准化逻辑
 func aggregateBlockStatsFromPalette(regions TagCompound) []types.LitematicBlockStat {
 	counts := make(map[string]int)
 
@@ -130,7 +127,8 @@ func aggregateBlockStatsFromPalette(regions TagCompound) []types.LitematicBlockS
 
 	stats := make([]types.LitematicBlockStat, 0, len(counts))
 	for name, count := range counts {
-		stats = append(stats, types.LitematicBlockStat{Name: name, Count: count})
+		cn := ResolveBlockZH(strings.TrimPrefix(name, "minecraft:"))
+		stats = append(stats, types.LitematicBlockStat{Name: cn, Count: count})
 	}
 	sort.Slice(stats, func(i, j int) bool {
 		return stats[i].Count > stats[j].Count
@@ -138,9 +136,6 @@ func aggregateBlockStatsFromPalette(regions TagCompound) []types.LitematicBlockS
 	return stats
 }
 
-// convertPreviewImage 将 Java ARGB byte array 转为 PNG base64 data URI
-// 输入: 140×140×4 字节序列（每个像素 4 字节 ARGB，大端序）
-// 输出: "data:image/png;base64,..."
 func convertPreviewImage(data []byte) string {
 	const size = 140
 	expectedLen := size * size * 4
@@ -148,17 +143,16 @@ func convertPreviewImage(data []byte) string {
 		return ""
 	}
 
-	// ARGB → RGBA
 	rgba := make([]byte, expectedLen)
 	for i := 0; i < size*size; i++ {
-		a := data[i*4]     // Java ARGB: byte0 = Alpha
-		r := data[i*4+1]   // byte1 = Red
-		g := data[i*4+2]   // byte2 = Green
-		b := data[i*4+3]   // byte3 = Blue
-		rgba[i*4] = r      // Go RGBA: byte0 = Red
-		rgba[i*4+1] = g    // byte1 = Green
-		rgba[i*4+2] = b    // byte2 = Blue
-		rgba[i*4+3] = a    // byte3 = Alpha
+		a := data[i*4]
+		r := data[i*4+1]
+		g := data[i*4+2]
+		b := data[i*4+3]
+		rgba[i*4] = r
+		rgba[i*4+1] = g
+		rgba[i*4+2] = b
+		rgba[i*4+3] = a
 	}
 
 	img := &image.RGBA{
@@ -249,6 +243,8 @@ func ParseSchematic(path string) map[string]interface{} {
 				} else {
 					name = fmt.Sprintf("ID:%d", id)
 				}
+			} else {
+				name = ResolveBlockZH(name)
 			}
 			idCounts[name]++
 		}
@@ -325,7 +321,8 @@ func ParseNbtStructure(path string) map[string]interface{} {
 		for _, elem := range paletteList.Elements {
 			nameTag := GetCompoundKey(elem, "Name")
 			if name, ok := nameTag.(TagString); ok && string(name) != "" {
-				counts[string(name)]++
+				cn := ResolveBlockZH(strings.TrimPrefix(string(name), "minecraft:"))
+				counts[cn]++
 			}
 		}
 		stats := make([]types.LitematicBlockStat, 0, len(counts))

@@ -11,6 +11,9 @@ import (
 //go:embed blocks_1_12.json
 var blocksJSON []byte
 
+//go:embed zh_cn.json
+var zhCNJSON []byte
+
 type prBlock struct {
 	ID         int    `json:"id"`
 	Name       string `json:"name"`
@@ -21,9 +24,10 @@ type prBlock struct {
 }
 
 var (
-	blockIDToName     map[int]string
-	blockVariantNames map[string]string
-	legacyBlockMapOnce sync.Once
+	blockIDToName      map[int]string
+	blockVariantNames  map[string]string
+	blockNameToZH      map[string]string
+	initOnce sync.Once
 )
 
 func loadLegacyBlocks() {
@@ -55,8 +59,38 @@ func toName(display string) string {
 	return strings.ToLower(strings.ReplaceAll(display, " ", "_"))
 }
 
+func initMaps() {
+	loadLegacyBlocks()
+	loadZHCN()
+}
+
+func loadZHCN() {
+	blockNameToZH = make(map[string]string)
+	var raw map[string]string
+	if json.Unmarshal(zhCNJSON, &raw) != nil {
+		return
+	}
+	prefix := "block.minecraft."
+	for k, v := range raw {
+		if strings.HasPrefix(k, prefix) {
+			blockNameToZH[strings.TrimPrefix(k, prefix)] = v
+		}
+	}
+}
+
+func ResolveBlockZH(name string) string {
+	initOnce.Do(initMaps)
+	if blockNameToZH == nil {
+		return name
+	}
+	if zh, ok := blockNameToZH[name]; ok {
+		return zh
+	}
+	return name
+}
+
 func ResolveBlockName(id int, data byte) string {
-	legacyBlockMapOnce.Do(loadLegacyBlocks)
+	initOnce.Do(initMaps)
 	if blockVariantNames == nil {
 		return ""
 	}
