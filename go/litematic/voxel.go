@@ -100,6 +100,8 @@ func BuildVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, erro
 		}
 	}
 
+	colorGroups = filterSurfaceOnly(colorGroups)
+
 	groups := make([]types.VoxelGroup, 0, len(colorGroups))
 	for color, positions := range colorGroups {
 		groups = append(groups, types.VoxelGroup{
@@ -259,6 +261,8 @@ func BuildNbtVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, e
 		blockCount++
 	}
 
+	colorGroups = filterSurfaceOnly(colorGroups)
+
 	groups := make([]types.VoxelGroup, 0, len(colorGroups))
 	for color, positions := range colorGroups {
 		groups = append(groups, types.VoxelGroup{Color: color, Positions: positions})
@@ -358,6 +362,8 @@ func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelD
 		return nil, fmt.Errorf("schematic has no Blocks or BlockData")
 	}
 
+	colorGroups = filterSurfaceOnly(colorGroups)
+
 	groups := make([]types.VoxelGroup, 0, len(colorGroups))
 	for color, positions := range colorGroups {
 		groups = append(groups, types.VoxelGroup{Color: color, Positions: positions})
@@ -368,6 +374,44 @@ func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelD
 		Truncated: truncated,
 		MaxBlocks: maxBlocks,
 	}, nil
+}
+
+// neighborOffsets 6 个相邻方向偏移（用于表面检测）
+var neighborOffsets = [][3]int16{
+	{1, 0, 0}, {-1, 0, 0},
+	{0, 1, 0}, {0, -1, 0},
+	{0, 0, 1}, {0, 0, -1},
+}
+
+// filterSurfaceOnly 剔除被 6 个邻居完全包围的不可见方块。
+// 对于实心建筑可减少 80-95% 的渲染实例数。
+func filterSurfaceOnly(colorGroups map[string][][3]int16) map[string][][3]int16 {
+	occupied := make(map[[3]int16]bool)
+	for _, positions := range colorGroups {
+		for _, p := range positions {
+			occupied[p] = true
+		}
+	}
+	result := make(map[string][][3]int16, len(colorGroups))
+	for color, positions := range colorGroups {
+		var exposed [][3]int16
+		for _, p := range positions {
+			surface := false
+			for _, off := range neighborOffsets {
+				if !occupied[[3]int16{p[0] + off[0], p[1] + off[1], p[2] + off[2]}] {
+					surface = true
+					break
+				}
+			}
+			if surface {
+				exposed = append(exposed, p)
+			}
+		}
+		if len(exposed) > 0 {
+			result[color] = exposed
+		}
+	}
+	return result
 }
 
 func readVarInt(data []byte, offset int) (int, int) {

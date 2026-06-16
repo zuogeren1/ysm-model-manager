@@ -165,24 +165,43 @@ export async function createLitematic3D(path, voxelFn) {
     const grid = new THREE.GridHelper(gridSize, Math.min(gridSize, 50), 0x444466, 0x222244);
     grid.position.set(centerX, 0, centerZ); scene.add(grid);
 
+    const CHUNK = 32;
+    const xChunks = Math.ceil(sizeX / CHUNK);
+    const yChunks = Math.ceil(sizeY / CHUNK);
+    const zChunks = Math.ceil(sizeZ / CHUNK);
+
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
     const instancedMeshes = [];
     const materials = [];
     for (const group of data.groups) {
       if (!group.positions || !group.positions.length) continue;
-      const mat = new THREE.MeshLambertMaterial({ color: group.color || "#7F7F7F" });
-      materials.push(mat);
-      const mesh = new THREE.InstancedMesh(boxGeo, mat, group.positions.length);
-      const dummy = new THREE.Object3D();
+      // 按空间分块：同色方块分散到各 chunk，每个 chunk 独立 InstancedMesh
+      const chunkMap = new Map();
       for (let i = 0; i < group.positions.length; i++) {
         const p = group.positions[i];
-        dummy.position.set(p[0] || 0, p[1] || 0, p[2] || 0);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(i, dummy.matrix);
+        const cx = Math.floor((p[0] || 0) / CHUNK);
+        const cy = Math.floor((p[1] || 0) / CHUNK);
+        const cz = Math.floor((p[2] || 0) / CHUNK);
+        const ck = cx + cy * xChunks + cz * xChunks * yChunks;
+        let arr = chunkMap.get(ck);
+        if (!arr) { arr = []; chunkMap.set(ck, arr); }
+        arr.push(p);
       }
-      mesh.instanceMatrix.needsUpdate = true;
-      scene.add(mesh);
-      instancedMeshes.push(mesh);
+      const mat = new THREE.MeshLambertMaterial({ color: group.color || "#7F7F7F" });
+      materials.push(mat);
+      const dummy = new THREE.Object3D();
+      for (const chunkPositions of chunkMap.values()) {
+        const mesh = new THREE.InstancedMesh(boxGeo, mat, chunkPositions.length);
+        for (let i = 0; i < chunkPositions.length; i++) {
+          const p = chunkPositions[i];
+          dummy.position.set(p[0] || 0, p[1] || 0, p[2] || 0);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+        scene.add(mesh);
+        instancedMeshes.push(mesh);
+      }
     }
 
     // 分层渲染逻辑

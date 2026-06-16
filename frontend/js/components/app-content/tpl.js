@@ -238,7 +238,7 @@ export function settingsHTML() {
 <div class="settings-group" style="margin-bottom:12px">
   <div class="setting-row">
     <span class="label">🔢 体素渲染上限</span>
-    <input type="number" id="set-voxel-max-blocks" class="stg-select" style="width:140px" min="50000" max="20000000" step="50000" placeholder="200000">
+    <input type="number" id="set-voxel-max-blocks" class="stg-select" style="width:140px" min="50000" max="100000000" step="100000" placeholder="200000">
   </div>
   <div class="stg-hint">3D 体素预览中允许的最大方块数量。增大可显示更多内容，但会占用更多内存。默认 200,000。</div>
 </div>

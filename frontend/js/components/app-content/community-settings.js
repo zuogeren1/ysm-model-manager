@@ -742,7 +742,7 @@ export async function initSettings(root) {
     voxelInput.value = cfg.voxelMaxBlocks || 200000;
     voxelInput.addEventListener("change", async () => {
       const v = parseInt(voxelInput.value, 10) || 200000;
-      const limit = Math.max(50000, Math.min(20000000, v));
+      const limit = Math.max(50000, Math.min(100000000, v));
       voxelInput.value = limit;
       try {
         const { SetVoxelMaxBlocks } = await import("../../../wailsjs/go/main/App.js");
