@@ -52,28 +52,26 @@ func (a *App) ReadPackMeta(path string) string {
 	return string(data)
 }
 
-// GetNbtVoxelData 读取 .nbt 结构文件体素数据
-func (a *App) GetNbtVoxelData(path string) string {
+// marshalVoxelData 调用体素构建函数并序列化为 JSON。
+func marshalVoxelData(tag, fnName, path string, buildFn func(string, int) (*types.LitematicVoxelData, error)) string {
 	const maxBlocks = 200000
-	data, err := litematic.BuildNbtVoxelData(path, maxBlocks)
+	data, err := buildFn(path, maxBlocks)
 	if err != nil {
-		log.Printf("[nbt] BuildNbtVoxelData 失败 %s: %v", path, err)
+		log.Printf("[%s] %s 失败 %s: %v", tag, fnName, path, err)
 		return "{}"
 	}
 	result, _ := json.Marshal(data)
 	return string(result)
 }
 
+// GetNbtVoxelData 读取 .nbt 结构文件体素数据
+func (a *App) GetNbtVoxelData(path string) string {
+	return marshalVoxelData("nbt", "BuildNbtVoxelData", path, litematic.BuildNbtVoxelData)
+}
+
 // GetSchematicVoxelData 读取 .schematic 文件体素数据
 func (a *App) GetSchematicVoxelData(path string) string {
-	const maxBlocks = 200000
-	data, err := litematic.BuildSchematicVoxelData(path, maxBlocks)
-	if err != nil {
-		log.Printf("[schematic] BuildSchematicVoxelData 失败 %s: %v", path, err)
-		return "{}"
-	}
-	result, _ := json.Marshal(data)
-	return string(result)
+	return marshalVoxelData("schematic", "BuildSchematicVoxelData", path, litematic.BuildSchematicVoxelData)
 }
 
 // ReadSchematic 读取 .schematic 文件基本信息
@@ -114,14 +112,7 @@ func (a *App) ReadLitematicMeta(path string) string {
 
 // GetLitematicVoxelData 读取投影文件体素数据（按颜色分组的方块位置）
 func (a *App) GetLitematicVoxelData(path string) string {
-	const maxBlocks = 200000
-	data, err := litematic.BuildVoxelData(path, maxBlocks)
-	if err != nil {
-		log.Printf("[litematic] BuildVoxelData 失败 %s: %v", path, err)
-		return "{}"
-	}
-	result, _ := json.Marshal(data)
-	return string(result)
+	return marshalVoxelData("litematic", "BuildVoxelData", path, litematic.BuildVoxelData)
 }
 
 // DetectResourceType 检测指定文件的资源类型
@@ -161,6 +152,8 @@ func specificRoot(cfg types.AppConfig, rtype string) string {
 		return cfg.ShaderpackRoot
 	case "create-blueprint":
 		return cfg.SchematicRoot
+	case "litematic":
+		return cfg.LitematicRoot
 	case "mmd-skin":
 		return cfg.MmdRoot
 	case "vrchat-avatar":
@@ -244,6 +237,8 @@ func (a *App) SetResourceRoot(rtype, path string) error {
 		cfg.ShaderpackRoot = path
 	case "create-blueprint":
 		cfg.SchematicRoot = path
+	case "litematic":
+		cfg.LitematicRoot = path
 	case "mmd-skin":
 		cfg.MmdRoot = path
 	case "vrchat-avatar":
