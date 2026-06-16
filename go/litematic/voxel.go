@@ -12,7 +12,7 @@ import (
 type regionInfo struct {
 	originX, originY, originZ int
 	sizeX, sizeY, sizeZ       int
-	palette                   []string // 索引→颜色字符串
+	palette                   []string
 	longs                     []int64
 	bpe                       int
 }
@@ -31,34 +31,34 @@ func BuildVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, erro
 	}
 	defer gz.Close()
 
-	root, err := ReadRootCompound(gz)
+	root, err := readRootCompound(gz)
 	if err != nil {
 		return nil, fmt.Errorf("nbt: %w", err)
 	}
 
 	encSize := [3]int{}
-	if metadata := GetCompound(root, "Metadata"); metadata != nil {
-		if es := GetCompound(metadata, "EnclosingSize"); es != nil {
-			if v, ok := GetInt(es, "x"); ok {
+	if metadata := getCompound(root, "Metadata"); metadata != nil {
+		if es := getCompound(metadata, "EnclosingSize"); es != nil {
+			if v, ok := getInt(es, "x"); ok {
 				encSize[0] = v
 			}
-			if v, ok := GetInt(es, "y"); ok {
+			if v, ok := getInt(es, "y"); ok {
 				encSize[1] = v
 			}
-			if v, ok := GetInt(es, "z"); ok {
+			if v, ok := getInt(es, "z"); ok {
 				encSize[2] = v
 			}
 		}
 	}
 
-	regions := GetCompound(root, "Regions")
+	regions := getCompound(root, "Regions")
 	if regions == nil {
 		return &types.LitematicVoxelData{Size: encSize}, nil
 	}
 
 	var regionInfos []regionInfo
 	for _, regionTag := range regions {
-		region, ok := regionTag.(TagCompound)
+		region, ok := regionTag.(map[string]any)
 		if !ok {
 			continue
 		}
@@ -116,36 +116,40 @@ func BuildVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, erro
 }
 
 // buildRegionInfo 标准化一个 region 的遍历信息
-func buildRegionInfo(region TagCompound) *regionInfo {
-	paletteList := GetList(region, "BlockStatePalette")
-	if paletteList == nil || len(paletteList.Elements) <= 1 {
+func buildRegionInfo(region map[string]any) *regionInfo {
+	paletteList := getList(region, "BlockStatePalette")
+	if paletteList == nil || len(paletteList) <= 1 {
 		return nil
 	}
 
-	palette := make([]string, len(paletteList.Elements))
-	for i, elem := range paletteList.Elements {
-		nameTag := GetCompoundKey(elem, "Name")
-		if name, ok := nameTag.(TagString); ok {
-			palette[i] = MapColor(string(name))
+	palette := make([]string, len(paletteList))
+	for i, elem := range paletteList {
+		if elemMap, ok := elem.(map[string]any); ok {
+			nameTag := getCompoundKey(elemMap, "Name")
+			if name, ok := nameTag.(string); ok {
+				palette[i] = MapColor(name)
+			} else {
+				palette[i] = "#000000"
+			}
 		} else {
 			palette[i] = "#000000"
 		}
 	}
 
-	sizeCompound := GetCompound(region, "Size")
+	sizeCompound := getCompound(region, "Size")
 	if sizeCompound == nil {
 		return nil
 	}
-	sx, _ := GetInt(sizeCompound, "x")
-	sy, _ := GetInt(sizeCompound, "y")
-	sz, _ := GetInt(sizeCompound, "z")
+	sx, _ := getInt(sizeCompound, "x")
+	sy, _ := getInt(sizeCompound, "y")
+	sz, _ := getInt(sizeCompound, "z")
 
-	posCompound := GetCompound(region, "Position")
+	posCompound := getCompound(region, "Position")
 	ox, oy, oz := 0, 0, 0
 	if posCompound != nil {
-		ox, _ = GetInt(posCompound, "x")
-		oy, _ = GetInt(posCompound, "y")
-		oz, _ = GetInt(posCompound, "z")
+		ox, _ = getInt(posCompound, "x")
+		oy, _ = getInt(posCompound, "y")
+		oz, _ = getInt(posCompound, "z")
 	}
 
 	// 负 size 标准化
@@ -162,7 +166,7 @@ func buildRegionInfo(region TagCompound) *regionInfo {
 		sz = -sz
 	}
 
-	longs, ok := GetLongArray(region, "BlockStates")
+	longs, ok := getLongArray(region, "BlockStates")
 	if !ok || len(longs) == 0 {
 		return nil
 	}
@@ -192,30 +196,34 @@ func BuildNbtVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, e
 		return nil, err
 	}
 	defer gz.Close()
-	root, err := ReadRootCompound(gz)
+	root, err := readRootCompound(gz)
 	if err != nil {
 		return nil, err
 	}
 
-	sizeList := GetList(root, "size")
-	blocksList := GetList(root, "blocks")
-	paletteList := GetList(root, "palette")
+	sizeList := getList(root, "size")
+	blocksList := getList(root, "blocks")
+	paletteList := getList(root, "palette")
 	if sizeList == nil || blocksList == nil || paletteList == nil {
 		return nil, fmt.Errorf("not a structure NBT file")
 	}
-	if len(sizeList.Elements) != 3 {
+	if len(sizeList) != 3 {
 		return nil, fmt.Errorf("invalid size")
 	}
 
-	sx := int(sizeList.Elements[0].(TagInt))
-	sy := int(sizeList.Elements[1].(TagInt))
-	sz := int(sizeList.Elements[2].(TagInt))
+	sx := int(sizeList[0].(int32))
+	sy := int(sizeList[1].(int32))
+	sz := int(sizeList[2].(int32))
 
-	paletteColors := make([]string, len(paletteList.Elements))
-	for i, elem := range paletteList.Elements {
-		nameTag := GetCompoundKey(elem, "Name")
-		if name, ok := nameTag.(TagString); ok {
-			paletteColors[i] = MapColor(string(name))
+	paletteColors := make([]string, len(paletteList))
+	for i, elem := range paletteList {
+		if elemMap, ok := elem.(map[string]any); ok {
+			nameTag := getCompoundKey(elemMap, "Name")
+			if name, ok := nameTag.(string); ok {
+				paletteColors[i] = MapColor(name)
+			} else {
+				paletteColors[i] = "#7F7F7F"
+			}
 		} else {
 			paletteColors[i] = "#7F7F7F"
 		}
@@ -224,27 +232,27 @@ func BuildNbtVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, e
 	colorGroups := make(map[string][][3]int16)
 	blockCount := 0
 	truncated := false
-	for _, elem := range blocksList.Elements {
+	for _, elem := range blocksList {
 		if blockCount >= maxBlocks {
 			truncated = true
 			break
 		}
-		block, ok := elem.(TagCompound)
+		block, ok := elem.(map[string]any)
 		if !ok {
 			continue
 		}
-		posList := GetList(block, "pos")
+		posList := getList(block, "pos")
 		stateTag := block["state"]
-		if posList == nil || stateTag == nil || len(posList.Elements) != 3 {
+		if posList == nil || stateTag == nil || len(posList) != 3 {
 			continue
 		}
-		state, ok := stateTag.(TagInt)
+		state, ok := stateTag.(int32)
 		if !ok || int(state) < 0 || int(state) >= len(paletteColors) {
 			continue
 		}
-		bx := int16(posList.Elements[0].(TagInt))
-		by := int16(posList.Elements[1].(TagInt))
-		bz := int16(posList.Elements[2].(TagInt))
+		bx := int16(posList[0].(int32))
+		by := int16(posList[1].(int32))
+		bz := int16(posList[2].(int32))
 		color := paletteColors[state]
 		colorGroups[color] = append(colorGroups[color], [3]int16{bx, by, bz})
 		blockCount++
@@ -274,28 +282,28 @@ func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelD
 	}
 	defer gz.Close()
 
-	root, err := ReadRootCompound(gz)
+	root, err := readRootCompound(gz)
 	if err != nil {
 		return nil, err
 	}
 
-	w, wok := GetInt(root, "Width")
-	h, hok := GetInt(root, "Height")
-	l, lok := GetInt(root, "Length")
+	w, wok := getInt(root, "Width")
+	h, hok := getInt(root, "Height")
+	l, lok := getInt(root, "Length")
 	if !wok || !hok || !lok {
 		return nil, fmt.Errorf("not a schematic file")
 	}
 
-	blocksBA, _ := GetByteArray(root, "Blocks")
-	blockDataBA, _ := GetByteArray(root, "BlockData")
-	dataBA, _ := GetByteArray(root, "Data")
+	blocksBA, _ := getByteArray(root, "Blocks")
+	blockDataBA, _ := getByteArray(root, "BlockData")
+	dataBA, _ := getByteArray(root, "Data")
 
-	paletteCompound := GetCompound(root, "Palette")
+	paletteCompound := getCompound(root, "Palette")
 	var paletteMap map[int]string
 	if paletteCompound != nil {
 		paletteMap = make(map[int]string)
-		for name, tag := range paletteCompound {
-			if id, ok := tag.(TagInt); ok {
+		for name, v := range paletteCompound {
+			if id, ok := v.(int32); ok {
 				paletteMap[int(id)] = MapColor(name)
 			}
 		}
