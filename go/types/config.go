@@ -14,7 +14,8 @@ type AppConfig struct {
 	McRoot           string `json:"mcRoot"`
 	LinkMode         string `json:"linkMode"`
 	Theme            string `json:"theme"`
-	Mirror           string `json:"mirror"`
+	Mirror          string `json:"mirror"`
+	VoxelMaxBlocks  int    `json:"voxelMaxBlocks"` // 3D 体素渲染上限，0=使用默认 200000
 	// 窗口状态（合并到主配置，避免 window_state.json 散落）
 	WinX    int `json:"winX"`
 	WinY    int `json:"winY"`

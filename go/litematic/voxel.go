@@ -112,6 +112,7 @@ func BuildVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, erro
 		Size:      encSize,
 		Groups:    groups,
 		Truncated: truncated,
+		MaxBlocks: maxBlocks,
 	}, nil
 }
 
@@ -266,6 +267,7 @@ func BuildNbtVoxelData(path string, maxBlocks int) (*types.LitematicVoxelData, e
 		Size:      [3]int{sx, sy, sz},
 		Groups:    groups,
 		Truncated: truncated,
+		MaxBlocks: maxBlocks,
 	}, nil
 }
 
@@ -364,6 +366,7 @@ func BuildSchematicVoxelData(path string, maxBlocks int) (*types.LitematicVoxelD
 		Size:      [3]int{w, h, l},
 		Groups:    groups,
 		Truncated: truncated,
+		MaxBlocks: maxBlocks,
 	}, nil
 }
 

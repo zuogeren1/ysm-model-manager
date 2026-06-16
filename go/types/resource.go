@@ -157,6 +157,7 @@ type LitematicVoxelData struct {
 	Size      [3]int       `json:"size"`      // 包围盒尺寸 [x, y, z]
 	Groups    []VoxelGroup `json:"groups"`    // 按颜色分组的方块
 	Truncated bool         `json:"truncated"` // 超过上限被截断
+	MaxBlocks int          `json:"maxBlocks"` // 生效的渲染上限
 }
 
 // VoxelGroup 同一颜色的方块组

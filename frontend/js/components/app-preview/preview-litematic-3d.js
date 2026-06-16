@@ -280,7 +280,8 @@ export async function createLitematic3D(path, voxelFn) {
     if (data.truncated) {
       const w = document.createElement("div");
       w.style.cssText = "padding:6px 12px;background:rgba(207,83,0,0.3);color:#ffa64d;font-size:12px;text-align:center;flex-shrink:0";
-      w.textContent = "⚠️ 方块数量超过上限（200,000），仅显示部分内容";
+      const max = data.maxBlocks || 200000;
+      w.textContent = "⚠️ 方块数量超过上限（" + max.toLocaleString() + "），仅显示部分内容";
       overlay.insertBefore(w, overlay.children[1]);
     }
 

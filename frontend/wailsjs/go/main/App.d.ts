@@ -283,6 +283,8 @@ export function SetRepoRoot(arg1:string):Promise<void>;
 
 export function SetResourceRoot(arg1:string,arg2:string):Promise<void>;
 
+export function SetVoxelMaxBlocks(arg1:number):Promise<void>;
+
 export function StartProxy(arg1:number):Promise<void>;
 
 export function StopProxy():Promise<void>;

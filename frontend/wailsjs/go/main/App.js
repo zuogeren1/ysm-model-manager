@@ -558,6 +558,10 @@ export function SetResourceRoot(arg1, arg2) {
   return window['go']['main']['App']['SetResourceRoot'](arg1, arg2);
 }
 
+export function SetVoxelMaxBlocks(arg1) {
+  return window['go']['main']['App']['SetVoxelMaxBlocks'](arg1);
+}
+
 export function StartProxy(arg1) {
   return window['go']['main']['App']['StartProxy'](arg1);
 }
