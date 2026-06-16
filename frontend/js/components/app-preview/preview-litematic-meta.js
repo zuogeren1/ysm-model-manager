@@ -45,17 +45,13 @@ function blockColorHTML(name) {
 
 function renderBlockList(stats) {
   if (!stats || !stats.length) return '<div style="color:var(--muted);font-size:var(--fs-sm)">无方块数据</div>';
-  const top = stats.slice(0, 100);
-  const extra = stats.length > 100
-    ? `<div class="lt-block-row"><span style="color:var(--muted);font-size:var(--fs-xs)">... 还有 ${stats.length - 100} 种</span></div>`
-    : "";
   let total = 0;
   for (const s of stats) total += s.count;
-  const rows = top.map((s) => {
+  const rows = stats.map((s) => {
     const color = blockColorHTML(shortName(s.name));
     return `<div class="lt-block-row"><span class="lt-color-swatch" style="background:${color}"></span><span class="lt-block-name">${esc(shortName(s.name))}</span><span class="lt-block-count">${s.count} 个</span></div>`;
   }).join("");
-  return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:var(--fs-xs);color:var(--muted)"><span>共 ${stats.length} 种方块</span><span>合计 ${total.toLocaleString()} 个</span></div><div class="lt-material-list">${rows}${extra}</div>`;
+  return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:var(--fs-xs);color:var(--muted)"><span>共 ${stats.length} 种方块</span><span>合计 ${total.toLocaleString()} 个</span></div><div class="lt-material-list">${rows}</div>`;
 }
 
 /** 显示投影文件详情面板（tab 布局） */
@@ -150,9 +146,9 @@ export async function showLitematic(ctx, path) {
     const materialDiv = ctx._root.getElementById("preview-material");
     if (materialDiv) {
       materialDiv.innerHTML = `<h3>🧱 材料列表</h3>
-    <div style="padding:12px;font-size:var(--fs-sm)">
-      ${renderBlockList(blockStats)}
-    </div>`;
+	    <div style="padding:12px;font-size:var(--fs-sm)">
+	      ${renderBlockList(blockStats)}
+	    </div>`;
     }
 
     if (btn3dTab) {
